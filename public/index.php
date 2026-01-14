@@ -1,54 +1,40 @@
 <?php
-// Start session for entire application
-session_start();
-
-// Load configuration
+// Load Config
 require_once '../config/config.php';
 
-// Load core MVC files
-require_once '../core/Database.php';
+// Load Core Classes
 require_once '../core/Controller.php';
 require_once '../core/Model.php';
+require_once '../core/Database.php';
 
-// Default controller and method
-$controller = 'HomeController';
-$method = 'index';
-$params = [];
-
-// Get URL if exists
-if (isset($_GET['url'])) {
-    $url = explode('/', filter_var(rtrim($_GET['url'], '/'), FILTER_SANITIZE_URL));
-    
-    if (!empty($url[0])) {
-        $controller = ucfirst($url[0]) . 'Controller';
-        unset($url[0]);
+// Autoload Controllers
+spl_autoload_register(function ($className) {
+    if (file_exists('../app/controllers/' . $className . '.php')) {
+        require_once '../app/controllers/' . $className . '.php';
     }
+});
 
-    if (isset($url[1])) {
-        $method = $url[1];
-        unset($url[1]);
-    }
+// Get URL
+$url = isset($_GET['url']) ? rtrim($_GET['url'], '/') : '';
+$url = filter_var($url, FILTER_SANITIZE_URL);
+$url = explode('/', $url);
 
-    $params = array_values($url);
-}
+// Default Controller & Method
+$controllerName = !empty($url[0]) ? ucfirst($url[0]) . 'Controller' : 'AuthController';
+$methodName = $url[1] ?? 'login';
+$params = array_slice($url, 2);
 
-// Controller file path
-$controllerFile = '../app/controllers/' . $controller . '.php';
-
-// Check controller existence
-if (!file_exists($controllerFile)) {
+// Check Controller
+if (!file_exists('../app/controllers/' . $controllerName . '.php')) {
     die('Controller not found');
 }
 
-require_once $controllerFile;
+$controller = new $controllerName();
 
-// Create controller instance
-$controllerObject = new $controller();
-
-// Check method
-if (!method_exists($controllerObject, $method)) {
+// Check Method
+if (!method_exists($controller, $methodName)) {
     die('Method not found');
 }
 
-// Call controller method
-call_user_func_array([$controllerObject, $method], $params);
+// Call Controller Method with Parameters
+call_user_func_array([$controller, $methodName], $params);
